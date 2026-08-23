@@ -1,3 +1,4 @@
+import os
 import logging
 import threading
 import numpy as np
@@ -8,7 +9,7 @@ from telegram.ext import (
     CallbackQueryHandler, filters, ContextTypes, ConversationHandler
 )
 
-# --- Render Free Web Service Keep-Alive Server ---
+# --- Render Port Compatible Keep-Alive Server ---
 web_app = Flask(__name__)
 
 @web_app.route('/')
@@ -16,9 +17,11 @@ def home():
     return "Bot is running online 24/7!"
 
 def run_flask():
-    web_app.run(host='0.0.0.0', port=10000)
+    # Render Dynamic Port Catching
+    port = int(os.environ.get("PORT", 10000))
+    web_app.run(host='0.0.0.0', port=port)
 
-# Logging Configuration
+# Logging Setup
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO)
 
 # Configuration Details
@@ -29,7 +32,7 @@ TELEGRAM_ADMIN_USERNAME = "subhajitxtrding"
 # Conversation States
 WAITING_FOR_KEY, SELECTING_PAIR, SELECTING_TIMEFRAME = range(3)
 
-# Available Markets
+# Markets List
 REAL_LIVE_PAIRS = [
     "EUR/USD", "GBP/USD", "USD/JPY", "AUD/USD", "USD/CAD", "USD/CHF", "NZD/USD",
     "EUR/GBP", "EUR/JPY", "GBP/JPY", "AUD/JPY", "CAD/JPY", "EUR/AUD", "GBP/CAD",
@@ -37,7 +40,7 @@ REAL_LIVE_PAIRS = [
     "BTC/USDT", "ETH/USDT", "XRP/USDT", "SOL/USDT"
 ]
 
-# Timeframe Options
+# Timeframes List
 TIMEFRAMES = [
     ("⏱ 1 Minute", "1m"),
     ("⏱ 3 Minutes", "3m"),
@@ -47,7 +50,7 @@ TIMEFRAMES = [
     ("⏱ 1 Hour", "1h")
 ]
 
-# Market Signal Engine
+# Analysis Engine
 def analyze_market_signal(pair_name, timeframe_label):
     np.random.seed(abs(hash(pair_name + timeframe_label)) % (2**32))
     
@@ -94,7 +97,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(welcome_text, reply_markup=reply_markup, parse_mode="Markdown")
     return WAITING_FOR_KEY
 
-# Ask for password
+# Ask Key
 async def prompt_for_key(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
@@ -104,7 +107,7 @@ async def prompt_for_key(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
     return WAITING_FOR_KEY
 
-# 2. Key Verification -> Show All Markets
+# 2. Key Verification
 async def verify_key(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_key = update.message.text.strip()
     
@@ -153,7 +156,6 @@ async def handle_pair_selection(update: Update, context: ContextTypes.DEFAULT_TY
     selected_pair = query.data.replace("pair_", "")
     context.user_data['selected_pair'] = selected_pair
 
-    # Timeframe Buttons
     keyboard = []
     row = []
     for tf_text, tf_code in TIMEFRAMES:
@@ -173,7 +175,7 @@ async def handle_pair_selection(update: Update, context: ContextTypes.DEFAULT_TY
     )
     return SELECTING_TIMEFRAME
 
-# 4. Timeframe Selected -> Analyze & Show Signal
+# 4. Timeframe Selected -> Show Signal
 async def handle_timeframe_selection(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
@@ -202,7 +204,6 @@ async def handle_timeframe_selection(update: Update, context: ContextTypes.DEFAU
         f"💡 **Trading Tip:** Enter trade at the first 0-3 seconds of candle opening."
     )
 
-    # Keyboard for Next Analysis
     keyboard = []
     row = []
     for pair in REAL_LIVE_PAIRS:
@@ -219,14 +220,13 @@ async def handle_timeframe_selection(update: Update, context: ContextTypes.DEFAU
     await query.message.reply_text("🔄 **অন্য কোনো মার্কেট এনালাইজ করতে সিলেক্ট করুন:**", reply_markup=reply_markup, parse_mode="Markdown")
     return SELECTING_PAIR
 
-# Cancel Command Handler
+# Cancel
 async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE):
     context.user_data['authenticated'] = False
     await update.message.reply_text("🔒 Bot locked. Type /start to unlock again.")
     return ConversationHandler.END
 
 def main():
-    # Start Keep-Alive Server
     threading.Thread(target=run_flask, daemon=True).start()
 
     app = ApplicationBuilder().token(BOT_TOKEN).build()
