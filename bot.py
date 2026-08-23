@@ -17,7 +17,6 @@ def home():
     return "Bot is running online 24/7!"
 
 def run_flask():
-    # Render Dynamic Port Catching
     port = int(os.environ.get("PORT", 10000))
     web_app.run(host='0.0.0.0', port=port)
 
@@ -78,31 +77,31 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     context.user_data['authenticated'] = False
     
     keyboard = [
-        [InlineKeyboardButton("🔑 Get Secret Key (কি নাও)", url=f"https://t.me/{TELEGRAM_ADMIN_USERNAME}")],
+        [InlineKeyboardButton("🔑 Get Secret Key", url=f"https://t.me/{TELEGRAM_ADMIN_USERNAME}")],
         [InlineKeyboardButton("🔓 Enter Key to Unlock", callback_data="ask_key")]
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
 
     welcome_text = (
-        "👑 **ট্রেডিং সিগন্যাল বটে আপনাকে স্বাগতম!** 👑\n"
+        "👑 **SIGNAL POWER BOT** 👑\n"
         "--------------------------------------------------\n"
         "📊 **লাইভ মার্কেট সিগন্যাল এনালাইজার**\n"
         "🎯 **Accuracy:** **85% - 95%**\n"
         "--------------------------------------------------\n\n"
-        "🔒 বটটি ব্যবহার করতে Secret Key (Password) প্রয়োজন।\n\n"
-        "👉 Key পেতে এডমিনের সাথে যোগাযোগ করতে **'🔑 Get Secret Key'** চাপুন।\n"
-        "👉 আপনার কাছে Key থাকলে **'🔓 Enter Key to Unlock'** চাপুন।"
+        "🔒 বটটি ব্যবহার করতে Secret Key প্রয়োজন।\n\n"
+        "👉 Key পেতে এডমিনের সাথে যোগাযোগ করতে **'🔑 Get Secret Key'** চাপুন।"
     )
 
-    await update.message.reply_text(welcome_text, reply_markup=reply_markup, parse_mode="Markdown")
+    if update.message:
+        await update.message.reply_text(welcome_text, reply_markup=reply_markup, parse_mode="Markdown")
     return WAITING_FOR_KEY
 
 # Ask Key
 async def prompt_for_key(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
-    await query.edit_message_text(
-        "🔑 অনুগ্রহ করে আপনার **Secret Key (Password)** টি নিচে টাইপ করে লিখুন:",
+    await query.message.reply_text(
+        "🔑 অনুগ্রহ করে আপনার **Secret Key (Password)** টি নিচে টাইপ করে পাঠান:",
         parse_mode="Markdown"
     )
     return WAITING_FOR_KEY
@@ -135,11 +134,11 @@ async def verify_key(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return SELECTING_PAIR
     else:
         keyboard = [
-            [InlineKeyboardButton("🔑 Get Secret Key (কি নাও)", url=f"https://t.me/{TELEGRAM_ADMIN_USERNAME}")]
+            [InlineKeyboardButton("🔑 Get Secret Key", url=f"https://t.me/{TELEGRAM_ADMIN_USERNAME}")]
         ]
         reply_markup = InlineKeyboardMarkup(keyboard)
         await update.message.reply_text(
-            "❌ **ভুল পাসওয়ার্ড!** সঠিক পাসওয়ার্ড লিখুন অথবা এডমিনের থেকে Key নিতে নিচের বাটনে চাপ দিন:",
+            "❌ **ভুল পাসওয়ার্ড!** সঠিক পাসওয়ার্ড লিখুন অথবা এডমিনের থেকে Key নিন:",
             reply_markup=reply_markup
         )
         return WAITING_FOR_KEY
@@ -148,10 +147,6 @@ async def verify_key(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def handle_pair_selection(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
-
-    if not context.user_data.get('authenticated', False):
-        await query.edit_message_text("🔒 Access Denied! Please run /start and enter password.")
-        return ConversationHandler.END
 
     selected_pair = query.data.replace("pair_", "")
     context.user_data['selected_pair'] = selected_pair
@@ -167,7 +162,7 @@ async def handle_pair_selection(update: Update, context: ContextTypes.DEFAULT_TY
         keyboard.append(row)
 
     reply_markup = InlineKeyboardMarkup(keyboard)
-    await query.edit_message_text(
+    await query.message.reply_text(
         f"🎯 Selected Market: **{selected_pair}**\n\n"
         f"⏱ এবার আপনার পছন্দের **Timeframe** টি নির্বাচন করুন:",
         reply_markup=reply_markup,
@@ -183,7 +178,7 @@ async def handle_timeframe_selection(update: Update, context: ContextTypes.DEFAU
     selected_pair = context.user_data.get('selected_pair', 'Market')
     tf_code = query.data.replace("tf_", "")
 
-    await query.edit_message_text(
+    await query.message.reply_text(
         f"⏳ Analyzing 50 indicators for **{selected_pair}** on **{tf_code}** timeframe...", 
         parse_mode="Markdown"
     )
@@ -223,7 +218,8 @@ async def handle_timeframe_selection(update: Update, context: ContextTypes.DEFAU
 # Cancel
 async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE):
     context.user_data['authenticated'] = False
-    await update.message.reply_text("🔒 Bot locked. Type /start to unlock again.")
+    if update.message:
+        await update.message.reply_text("🔒 Bot locked. Type /start to unlock again.")
     return ConversationHandler.END
 
 def main():
